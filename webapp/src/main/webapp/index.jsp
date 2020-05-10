@@ -1,49 +1,75 @@
-<%@ page contentType="text/html; charset=UTF-8" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core
-"
-         prefix="c" %>
-<%@ taglib uri="/functions" prefix="f" %>
 <html>
-<head><title>Localized Dates</title></head>
-<body bgcolor="white">
-<jsp:useBean id="locales" scope="application"
-    class="mypkg.MyLocales"/>
-
-<form name="localeForm" action="index.jsp" method="post">
-<c:set var="selectedLocaleString" value="${param.locale}" />
-<c:set var="selectedFlag"
-     value="${!empty selectedLocaleString}" />
-<b>Locale:</b>
-<select name=locale>
-<c:forEach var="localeString" items="${locales.localeNames}" >
-<c:choose>
-    <c:when test="${selectedFlag}">
-        <c:choose>
-            <c:when
-                 test="${f:equals(selectedLocaleString, localeString)}" >
-                <option selected>${localeString}</option>
-            </c:when>
-            <c:otherwise>
-                <option>${localeString}</option>
-            </c:otherwise>
-        </c:choose>
-    </c:when>
-    <c:otherwise>
-        <option>${localeString}</option>
-    </c:otherwise>
-</c:choose>
-</c:forEach>
-</select>
-<input type="submit" name="Submit" value="Get Date">
-</form>
-
-<c:if test="${selectedFlag}" >
-    <jsp:setProperty name="locales"
-        property="selectedLocaleString"
-        value="${selectedLocaleString}" />
-    <jsp:useBean id="date" class="mypkg.MyDate"/>
-    <jsp:setProperty name="date" property="locale"
-        value="${locales.selectedLocale}"/>
-    <b>Date: </b>${date.date}</c:if>
+<head>
+  <title>Book Query</title>
+</head>
+<body>
+  <h1>Another E-Bookstore</h1>
+  <h3>Choose Author(s):</h3>
+  <form method="get">
+    <input type="checkbox" name="author" value="Tan Ah Teck">Tan
+    <input type="checkbox" name="author" value="Mohd Ali">Ali
+    <input type="checkbox" name="author" value="Kumar">Kumar
+    <input type="submit" value="Query">
+  </form>
+ 
+  <%
+    String[] authors = request.getParameterValues("author");
+    if (authors != null) {
+  %>
+  <%@ page import = "java.sql.*" %>
+  <%
+      Connection conn = DriverManager.getConnection(
+          "jdbc:mysql://localhost:8888/ebookshop", "myuser", "xxxx"); // <== Check!
+      // Connection conn =
+      //    DriverManager.getConnection("jdbc:odbc:eshopODBC");  // Access
+      Statement stmt = conn.createStatement();
+ 
+      String sqlStr = "SELECT * FROM books WHERE author IN (";
+      sqlStr += "'" + authors[0] + "'";  // First author
+      for (int i = 1; i < authors.length; ++i) {
+         sqlStr += ", '" + authors[i] + "'";  // Subsequent authors need a leading commas
+      }
+      sqlStr += ") AND qty > 0 ORDER BY author ASC, title ASC";
+ 
+      // for debugging
+      System.out.println("Query statement is " + sqlStr);
+      ResultSet rset = stmt.executeQuery(sqlStr);
+  %>
+      <hr>
+      <form method="get" action="order.jsp">
+        <table border=1 cellpadding=5>
+          <tr>
+            <th>Order</th>
+            <th>Author</th>
+            <th>Title</th>
+            <th>Price</th>
+            <th>Qty</th>
+          </tr>
+  <%
+      while (rset.next()) {
+        int id = rset.getInt("id");
+  %>
+          <tr>
+            <td><input type="checkbox" name="id" value="<%= id %>"></td>
+            <td><%= rset.getString("author") %></td>
+            <td><%= rset.getString("title") %></td>
+            <td>$<%= rset.getInt("price") %></td>
+            <td><%= rset.getInt("qty") %></td>
+          </tr>
+  <%
+      }
+  %>
+        </table>
+        <br>
+        <input type="submit" value="Order">
+        <input type="reset" value="Clear">
+      </form>
+      <a href="<%= request.getRequestURI() %>"><h3>Back</h3></a>
+  <%
+      rset.close();
+      stmt.close();
+      conn.close();
+    }
+  %>
 </body>
 </html>
